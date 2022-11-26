@@ -15,8 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from bankaccount.views import plaid_webhook_endpoint
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/users/', include('users.urls')),
+    path('api/v1/plaid/', include('bankaccount.urls')),
+    path('plaid_webhook/', plaid_webhook_endpoint),
 ]
