@@ -4,6 +4,7 @@ import bankaccount.utils
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+from plaidapp import utils
 
 
 class Migration(migrations.Migration):
@@ -32,7 +33,7 @@ class Migration(migrations.Migration):
             name='UserPlaidLink',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('access_code', bankaccount.utils.EncryptedField(max_length=254, verbose_name='Access Code')),
+                ('access_code', utils.EncryptedField(max_length=254, verbose_name='Access Code')),
                 ('item_id', models.CharField(blank=True, max_length=254, null=True, verbose_name='Item ID')),
                 ('institution', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='bankaccount.plaidinstitution')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),

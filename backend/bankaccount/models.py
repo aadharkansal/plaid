@@ -1,8 +1,8 @@
 from django.db import models
-from bankaccount.utils import EncryptedField
 from django.utils.translation import gettext_lazy as _
 
 from users.models import User
+from plaidapp.utils import EncryptedField
 
 
 class PlaidInstitution(models.Model):
@@ -15,7 +15,7 @@ class PlaidInstitution(models.Model):
 
     class Meta:
         verbose_name = _('Plaid Institution')
-        verbose_name_plural = _('Plaid Instituions')
+        verbose_name_plural = _('Plaid Institutions')
     
     def __str__(self):
         return self.name
@@ -35,7 +35,7 @@ class UserPlaidLink(models.Model):
         verbose_name_plural = _('User Plaid Links')
     
     def __str__(self):
-        return self.name
+        return "{} - {}".format(self.institution, self.user)
 
 
 class PlaidLinkAccount(models.Model):
@@ -52,7 +52,7 @@ class PlaidLinkAccount(models.Model):
     currency = models.CharField(max_length=10)
 
     def __str__(self):
-        return "{} - {} - {}".format(self.user_plaid_link, self.subtype, self.balance)
+        return "{} - {} - {}".format(self.user_plaid_link, self.sub_type, self.balance)
 
 
 class PlaidAccountTransaction(models.Model):

@@ -10,17 +10,30 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from bankaccount.models import *
-from bankaccount.serializers import AccessTokenSerializer
+from bankaccount.serializers import AccessTokenSerializer, PlaidLinkAccountSerializer, PlaidAccountTransactionSerializer
 from bankaccount.utils import PlaidUtils
 
 
-class AccessTokenView(CreateModelMixin, GenericAPIView):
+class AccessTokenAPIView(CreateModelMixin, GenericAPIView):
     queryset = User.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = AccessTokenSerializer
 
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
+
+class UserTransactionAccountAPIView(GenericAPIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        accounts = PlaidLinkAccountSerializer(PlaidLinkAccount.objects.filter(user_plaid_link__user=request.user), many=True).data
+        transactions = PlaidAccountTransactionSerializer(PlaidAccountTransaction.objects.filter(plaid_link_account__user_plaid_link__user=request.user), many=True).data
+        data = {
+            'user_accounts': accounts,
+            'user_transactions': transactions
+        }
+        return Response(data, status=200)
 
 
 @csrf_exempt

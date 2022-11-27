@@ -9,32 +9,7 @@ from cryptography.fernet import Fernet
 import plaid
 from decouple import config
 
-from bankaccount.models import *
-
-
-class EncryptedField(CharField):
-    """
-    Custom model field to store sensitive data
-    """
-    def __init__(self, *args, db_collation=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.block_size = 16
-        self.cipher = Fernet(base64.urlsafe_b64encode(str.encode(config('SECRET_KEY')[:32])))
-    def pad(self, value):
-        return value + (self.block_size - len(value) % self.block_size) * chr(
-            self.block_size - len(value) % self.block_size
-        )
-    def unpad(self, value):
-        return value[: -ord(value[len(value) - 1:])]
-    def from_db_value(self, value, expression, connection):
-        if value is None:
-            return value
-        return self.unpad(self.cipher.decrypt(bytes(str.encode(value)))).decode()
-    def get_prep_value(self, value):
-        if value is None:
-            return value
-        return self.cipher.encrypt(bytes(str.encode(self.pad(value)))).decode()
-    
+from bankaccount.models import PlaidLinkAccount, PlaidAccountTransaction
 
 
 class PlaidUtils():
@@ -106,11 +81,11 @@ class PlaidUtils():
             return None
 
     @staticmethod
-    def get_plaid_account_details(access_token):
+    def get_plaid_account_details(access_token, user_plaid_link):
         client = PlaidUtils.get_plaid_client()
         try:
             try:
-                accounts = client.Accounts.balance.get(access_token,_options = {'min_last_updated_datetime' : (datetime.now()-timedelta(days=config('PLAID_ACCOUNT_FETCH_DAYS'))).strftime("%Y-%m-%dT%H:%M:%SZ")})
+                accounts = client.Accounts.balance.get(access_token,_options = {'min_last_updated_datetime' : (datetime.now()-timedelta(days=int(config('PLAID_ACCOUNT_FETCH_DAYS')))).strftime("%Y-%m-%dT%H:%M:%SZ")})
             except plaid.errors.BaseError as e:
                 if e.code == 'ITEM_LOGIN_REQUIRED':
                     print("required login try refreshing tokens...")
@@ -127,18 +102,21 @@ class PlaidUtils():
                         auth_accounts = []
             plaid_link_accounts = []
             for account in accounts:
+                if len(PlaidLinkAccount.objects.filter(user_plaid_link=user_plaid_link, account_id= account.get('account_id'))) > 0:
+                    continue
                 plaid_link_account = PlaidLinkAccount.objects.create(
+                    user_plaid_link = user_plaid_link,
                     balance = round(float(account.get('balances').get('current')), 4),
                     currency = account.get('balances').get('iso_currency_code'),
                     account_id =  account.get('account_id'),
                     name = account.get('name'),
                     mask = account.get('mask'),
-                    subtype = account.get('subtype'),
-                    type = account.get('type'),
+                    sub_type = account.get('subtype'),
+                    type = account.get('type')
                 )
                 plaid_link_accounts.append(plaid_link_account)
             return plaid_link_accounts
-        except BaseErplaid.errors.BaseErrorror as e:
+        except plaid.errors.BaseError as e:
             print(e)
             return None
     
@@ -147,7 +125,7 @@ class PlaidUtils():
         try:
             client = PlaidUtils.get_plaid_client()
             end_date = datetime.today().strftime("%Y-%m-%d")
-            start_date = (datetime.today() - timedelta(days=config('ACCOUNT_FETCH_DAYS'))).strftime("%Y-%m-%d")
+            start_date = (datetime.today() - timedelta(days=int(config('ACCOUNT_FETCH_DAYS')))).strftime("%Y-%m-%d")
             if account_id:
                 response = client.Transactions.get(
                     access_code,
