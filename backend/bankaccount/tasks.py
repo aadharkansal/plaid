@@ -31,3 +31,10 @@ def get_item_and_account_details(data):
         user_plaid_link.save()
     plaid_accounts_details = PlaidUtils.get_plaid_account_details(data.get('access_token'), user_plaid_link)
     print(plaid_accounts_details)
+
+
+@shared_task
+def fetch_and_update_account_transactions(access_code, transaction_count):
+    PlaidUtils.fetch_and_save_account_transactions(
+                        access_code=access_code, transaction_count=transaction_count
+                    )

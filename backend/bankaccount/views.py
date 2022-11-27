@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from bankaccount.models import *
 from bankaccount.serializers import AccessTokenSerializer, PlaidLinkAccountSerializer, PlaidAccountTransactionSerializer
 from bankaccount.utils import PlaidUtils
+from bankaccount.tasks import fetch_and_update_account_transactions
 
 
 class AccessTokenAPIView(CreateModelMixin, GenericAPIView):
@@ -59,9 +60,8 @@ def plaid_webhook_endpoint(request):
         if webhook_type == "TRANSACTIONS":
             if webhook_code == "DEFAULT_UPDATE":
                 if user_plaid_link and transaction_count:
-                    PlaidUtils.fetch_and_save_account_transactions(
-                        access_code=user_plaid_link.access_code, transaction_count=transaction_count
-                    )
+                    # passing fetching and saving task to celery
+                    fetch_and_update_account_transactions.delay(user_plaid_link.access_code, transaction_count)
     except Exception as e:
         print(e)
     return HttpResponse(status=200)
